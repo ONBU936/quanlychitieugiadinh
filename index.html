@@ -465,10 +465,13 @@
                             </div>
                             <div class="flex flex-col items-end">
                                 <div class="flex items-center gap-2">
-                                    <input type="text" inputmode="numeric" :value="displayMonthlyBudget" @input="handleBudgetInput" @change="saveToGoogleSheets()" class="w-32 text-right border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white">
+                                    <!-- INPUT THIẾT LẬP NGÂN SÁCH -->
+                                    <input type="text" inputmode="numeric" 
+                                           x-model="displayMonthlyBudget"
+                                           @change="saveToGoogleSheets()" 
+                                           class="w-32 text-right border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white">
                                     <span class="text-sm font-bold text-gray-800">VNĐ</span>
                                 </div>
-                                <!-- Hiện chữ đọc số tiền ngân sách -->
                                 <p class="text-[10px] text-primary font-bold mt-1 text-right" x-show="budgetInWords !== ''" x-text="budgetInWords"></p>
                             </div>
                         </div>
@@ -548,19 +551,21 @@
                     </button>
                 </div>
 
-                <!-- CẬP NHẬT: Nhập Số Tiền (Phân cách hàng nghìn bằng dấu cách và Đọc chữ) -->
+                <!-- CẬP NHẬT: CHO PHÉP NHẬP THỦ CÔNG KHÔNG TỰ ĐỘNG CHÈN DẤU -->
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Số tiền (VNĐ)</label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₫</span>
-                        <!-- Chuyển type="text" và dùng inputmode="numeric" để hiển thị bàn phím số, bắt event @input -->
-                        <input type="text" inputmode="numeric" :value="displayAmount" @input="handleAmountInput" placeholder="0" class="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-heading font-bold text-xl text-gray-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <!-- INPUT NHẬP SỐ TIỀN -->
+                        <input type="text" inputmode="numeric" 
+                               x-model="displayAmount"
+                               placeholder="0" 
+                               class="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-heading font-bold text-xl text-gray-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
                     </div>
-                    <!-- Hiển thị text tiếng Việt dưới ô nhập -->
                     <p class="text-[13px] text-primary font-bold mt-2 ml-1" x-show="amountInWords !== ''" x-text="amountInWords"></p>
                 </div>
 
-                <!-- Categories Grid (8 items = 2 rows x 4 cols) -->
+                <!-- Categories Grid -->
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Danh mục</label>
                     <div class="grid grid-cols-4 gap-2.5">
@@ -649,10 +654,13 @@
                         <option value="Sổ tiết kiệm">Sổ Tiết Kiệm</option>
                     </select>
                 </div>
-                <!-- Cập nhật ô nhập số dư ví -->
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Số dư ban đầu (VNĐ)</label>
-                    <input type="text" inputmode="numeric" :value="displayWalletBalance" @input="handleWalletBalanceInput" placeholder="0" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:bg-white focus:border-primary outline-none">
+                    <!-- INPUT THÊM SỐ DƯ VÍ -->
+                    <input type="text" inputmode="numeric" 
+                           x-model="displayWalletBalance"
+                           placeholder="0" 
+                           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:bg-white focus:border-primary outline-none">
                     <p class="text-xs font-bold mt-2 text-primary" x-show="walletBalanceInWords !== ''" x-text="walletBalanceInWords"></p>
                 </div>
                 <button @click="saveNewWallet()" class="w-full bg-secondary hover:bg-secondaryLight text-white font-bold py-3 rounded-xl transition-all shadow-md mt-2" :disabled="!newWallet.name">
@@ -695,7 +703,7 @@
         </div>
     </div>
 
-    <!-- KHỞI TẠO ALPINE.JS VÀ LOGIC DỮ LIỆU ĐÁM MÂY (GOOGLE SHEETS) -->
+    <!-- KHỞI TẠO ALPINE.JS VÀ LOGIC DỮ LIỆU ĐÁM MÂY -->
     <script>
         document.addEventListener('alpine:init', () => {
             Alpine.data('expenseApp', () => ({
@@ -715,11 +723,11 @@
                 isSyncing: false,
 
                 // Trạng thái form
-                newTx: { type: 'expense', amount: '', categoryId: '', walletId: '', date: new Date().toISOString().split('T')[0], note: '' },
-                newWallet: { name: '', type: 'Thẻ ATM', balance: '' },
+                newTx: { type: 'expense', amount: 0, categoryId: '', walletId: '', date: new Date().toISOString().split('T')[0], note: '' },
+                newWallet: { name: '', type: 'Thẻ ATM', balance: 0 },
                 newMember: { name: '', role: 'Thành viên' },
 
-                // State cho việc hiển thị định dạng số có dấu cách
+                // State hiển thị format số (cho phép người dùng tự gõ khoảng trắng)
                 displayAmount: '',
                 displayWalletBalance: '',
                 displayMonthlyBudget: '',
@@ -771,46 +779,55 @@
                         if (value === 'dashboard') setTimeout(() => this.initCharts(), 50);
                     });
                     
+                    // Xóa dữ liệu rác khi bật tắt Modal
                     this.$watch('showAddModal', value => {
                         if(value) {
                             this.resetCategory();
-                            this.displayAmount = ''; // Xóa trắng khi mở
+                            this.displayAmount = ''; 
+                            this.newTx.amount = 0;
+                        }
+                    });
+
+                    this.$watch('showAddWalletModal', value => {
+                        if(value) {
+                            this.displayWalletBalance = '';
+                            this.newWallet.balance = 0;
+                        }
+                    });
+
+                    // Đồng bộ từ ô nhập (cho phép chứa khoảng trắng) sang Data ngầm dạng số nguyên
+                    this.$watch('displayAmount', val => {
+                        let raw = String(val).replace(/\D/g, '');
+                        this.newTx.amount = raw ? parseInt(raw, 10) : 0;
+                    });
+
+                    this.$watch('displayWalletBalance', val => {
+                        let raw = String(val).replace(/\D/g, '');
+                        this.newWallet.balance = raw ? parseInt(raw, 10) : 0;
+                    });
+
+                    this.$watch('displayMonthlyBudget', val => {
+                        let raw = String(val).replace(/\D/g, '');
+                        this.monthlyBudget = raw ? parseInt(raw, 10) : 0;
+                    });
+                },
+
+                //==================================================
+                // LOGIC ĐỌC CHỮ TIẾNG VIỆT
+                //==================================================
+                formatWithSpaces(num) {
+
+                    // Tự động gán số từ Cloud về input ngân sách
+                    this.$watch('monthlyBudget', val => {
+                        if(this.cleaveBudget && document.activeElement !== this.$refs.budgetInput) {
+                            this.cleaveBudget.setRawValue(val ? val.toString() : '');
                         }
                     });
                 },
 
                 //==================================================
-                // LOGIC XỬ LÝ NHẬP TIỀN (DẤU CÁCH) VÀ ĐỌC CHỮ TIẾNG VIỆT
+                // LOGIC ĐỌC CHỮ TIẾNG VIỆT
                 //==================================================
-                formatWithSpaces(num) {
-                    if (!num && num !== 0) return '';
-                    if (num === 0) return '0';
-                    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-                },
-
-                handleAmountInput(e) {
-                    // Loại bỏ tất cả ký tự không phải số
-                    let val = e.target.value.replace(/\D/g, '');
-                    this.newTx.amount = val ? parseInt(val, 10) : '';
-                    this.displayAmount = this.formatWithSpaces(this.newTx.amount);
-                    // Ép input hiển thị giá trị đã format
-                    e.target.value = this.displayAmount; 
-                },
-
-                handleWalletBalanceInput(e) {
-                    let val = e.target.value.replace(/\D/g, '');
-                    this.newWallet.balance = val ? parseInt(val, 10) : '';
-                    this.displayWalletBalance = this.formatWithSpaces(this.newWallet.balance);
-                    e.target.value = this.displayWalletBalance;
-                },
-
-                handleBudgetInput(e) {
-                    let val = e.target.value.replace(/\D/g, '');
-                    this.monthlyBudget = val ? parseInt(val, 10) : 0;
-                    this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
-                    e.target.value = this.displayMonthlyBudget;
-                },
-
                 docTienVN(so) {
                     if (!so || isNaN(so) || so === 0) return '';
                     const mangso = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
@@ -922,7 +939,7 @@
                             this.wallets = data.wallets || JSON.parse(JSON.stringify(this.defaultWallets));
                             this.familyMembers = data.members || JSON.parse(JSON.stringify(this.defaultMembers));
                             this.monthlyBudget = data.budget || 0;
-                            // Cập nhật giá trị hiển thị dạng format
+                            // Cập nhật hiển thị (chỉ format 1 lần lúc tải)
                             this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
                         } else {
                             this.initLocalStorageFallback();
@@ -1121,8 +1138,8 @@
                         this.wallets[walletIndex] = w;
                     }
 
-                    this.newTx.amount = '';
-                    this.displayAmount = ''; // Reset format
+                    this.displayAmount = ''; 
+                    this.newTx.amount = 0;
                     this.newTx.note = '';
                     this.showAddModal = false;
 
@@ -1171,8 +1188,8 @@
 
                     this.wallets.push(wData);
                     this.newWallet.name = '';
-                    this.newWallet.balance = '';
                     this.displayWalletBalance = '';
+                    this.newWallet.balance = 0;
                     this.showAddWalletModal = false;
 
                     this.saveToGoogleSheets();
