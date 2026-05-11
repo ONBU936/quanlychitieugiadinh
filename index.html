@@ -458,14 +458,18 @@
                         
                         <h4 class="px-2 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Thiết lập chung</h4>
                         
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors gap-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 hover:bg-gray-50 rounded-xl transition-colors gap-2 relative">
                             <div class="flex items-center gap-3 text-gray-700">
                                 <i class="ph ph-currency-circle-dollar text-lg text-primary"></i>
                                 <span class="text-sm font-bold">Ngân sách tháng</span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <input type="number" x-model.number="monthlyBudget" @change="saveToGoogleSheets()" class="w-32 text-right border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white">
-                                <span class="text-sm font-bold text-gray-800">VNĐ</span>
+                            <div class="flex flex-col items-end">
+                                <div class="flex items-center gap-2">
+                                    <input type="text" inputmode="numeric" :value="displayMonthlyBudget" @input="handleBudgetInput" @change="saveToGoogleSheets()" class="w-32 text-right border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary bg-white">
+                                    <span class="text-sm font-bold text-gray-800">VNĐ</span>
+                                </div>
+                                <!-- Hiện chữ đọc số tiền ngân sách -->
+                                <p class="text-[10px] text-primary font-bold mt-1 text-right" x-show="budgetInWords !== ''" x-text="budgetInWords"></p>
                             </div>
                         </div>
 
@@ -544,13 +548,16 @@
                     </button>
                 </div>
 
-                <!-- Amount Input -->
+                <!-- CẬP NHẬT: Nhập Số Tiền (Phân cách hàng nghìn bằng dấu cách và Đọc chữ) -->
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Số tiền (VNĐ)</label>
                     <div class="relative">
                         <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">₫</span>
-                        <input type="number" x-model.number="newTx.amount" placeholder="0" class="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-heading font-bold text-xl text-gray-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <!-- Chuyển type="text" và dùng inputmode="numeric" để hiển thị bàn phím số, bắt event @input -->
+                        <input type="text" inputmode="numeric" :value="displayAmount" @input="handleAmountInput" placeholder="0" class="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-heading font-bold text-xl text-gray-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
                     </div>
+                    <!-- Hiển thị text tiếng Việt dưới ô nhập -->
+                    <p class="text-[13px] text-primary font-bold mt-2 ml-1" x-show="amountInWords !== ''" x-text="amountInWords"></p>
                 </div>
 
                 <!-- Categories Grid (8 items = 2 rows x 4 cols) -->
@@ -642,9 +649,11 @@
                         <option value="Sổ tiết kiệm">Sổ Tiết Kiệm</option>
                     </select>
                 </div>
+                <!-- Cập nhật ô nhập số dư ví -->
                 <div>
                     <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase">Số dư ban đầu (VNĐ)</label>
-                    <input type="number" x-model.number="newWallet.balance" placeholder="0" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:bg-white focus:border-primary outline-none">
+                    <input type="text" inputmode="numeric" :value="displayWalletBalance" @input="handleWalletBalanceInput" placeholder="0" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:bg-white focus:border-primary outline-none">
+                    <p class="text-xs font-bold mt-2 text-primary" x-show="walletBalanceInWords !== ''" x-text="walletBalanceInWords"></p>
                 </div>
                 <button @click="saveNewWallet()" class="w-full bg-secondary hover:bg-secondaryLight text-white font-bold py-3 rounded-xl transition-all shadow-md mt-2" :disabled="!newWallet.name">
                     Tạo Ví Này
@@ -701,7 +710,7 @@
                 wallets: [],
                 familyMembers: [],
 
-                // Google Sheets Sync (Đã tích hợp sẵn link của bạn)
+                // Google Sheets Sync
                 scriptUrl: localStorage.getItem('beu_script_url') || 'https://script.google.com/macros/s/AKfycbz0LZDODYZE-MMKtzKqMHERF4FMvBEKq-hpuDvAVr_gvza_BP1bv_GLBJ1014yH2splhA/exec',
                 isSyncing: false,
 
@@ -709,6 +718,11 @@
                 newTx: { type: 'expense', amount: '', categoryId: '', walletId: '', date: new Date().toISOString().split('T')[0], note: '' },
                 newWallet: { name: '', type: 'Thẻ ATM', balance: '' },
                 newMember: { name: '', role: 'Thành viên' },
+
+                // State cho việc hiển thị định dạng số có dấu cách
+                displayAmount: '',
+                displayWalletBalance: '',
+                displayMonthlyBudget: '',
 
                 filterType: 'all',
                 filterWallet: 'all',
@@ -747,12 +761,10 @@
                 ],
 
                 init() {
-                    // Tự động lưu link Google Sheets mặc định vào bộ nhớ máy nếu chưa có
                     if (!localStorage.getItem('beu_script_url')) {
                         localStorage.setItem('beu_script_url', this.scriptUrl);
                     }
 
-                    // Ưu tiên tải từ Google Sheets trước, nếu lỗi thì tải Local
                     this.loadFromGoogleSheets();
 
                     this.$watch('currentTab', value => {
@@ -760,9 +772,128 @@
                     });
                     
                     this.$watch('showAddModal', value => {
-                        if(value) this.resetCategory();
+                        if(value) {
+                            this.resetCategory();
+                            this.displayAmount = ''; // Xóa trắng khi mở
+                        }
                     });
                 },
+
+                //==================================================
+                // LOGIC XỬ LÝ NHẬP TIỀN (DẤU CÁCH) VÀ ĐỌC CHỮ TIẾNG VIỆT
+                //==================================================
+                formatWithSpaces(num) {
+                    if (!num && num !== 0) return '';
+                    if (num === 0) return '0';
+                    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                },
+
+                handleAmountInput(e) {
+                    // Loại bỏ tất cả ký tự không phải số
+                    let val = e.target.value.replace(/\D/g, '');
+                    this.newTx.amount = val ? parseInt(val, 10) : '';
+                    this.displayAmount = this.formatWithSpaces(this.newTx.amount);
+                    // Ép input hiển thị giá trị đã format
+                    e.target.value = this.displayAmount; 
+                },
+
+                handleWalletBalanceInput(e) {
+                    let val = e.target.value.replace(/\D/g, '');
+                    this.newWallet.balance = val ? parseInt(val, 10) : '';
+                    this.displayWalletBalance = this.formatWithSpaces(this.newWallet.balance);
+                    e.target.value = this.displayWalletBalance;
+                },
+
+                handleBudgetInput(e) {
+                    let val = e.target.value.replace(/\D/g, '');
+                    this.monthlyBudget = val ? parseInt(val, 10) : 0;
+                    this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
+                    e.target.value = this.displayMonthlyBudget;
+                },
+
+                docTienVN(so) {
+                    if (!so || isNaN(so) || so === 0) return '';
+                    const mangso = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+                    function dochangchuc(s, daydu) {
+                        let chuoi = "";
+                        let chuc = Math.floor(s / 10);
+                        let donvi = s % 10;
+                        if (chuc > 1) {
+                            chuoi = " " + mangso[chuc] + " mươi";
+                            if (donvi == 1) { chuoi += " mốt"; }
+                        } else if (chuc == 1) {
+                            chuoi = " mười";
+                            if (donvi == 1) { chuoi += " một"; }
+                        } else if (daydu && donvi > 0) {
+                            chuoi = " lẻ";
+                        }
+                        if (donvi == 5 && chuc > 0) {
+                            chuoi += " lăm";
+                        } else if (donvi > 1 || (donvi == 1 && chuc == 0)) {
+                            chuoi += " " + mangso[donvi];
+                        }
+                        return chuoi;
+                    }
+                    function docblock(s, daydu) {
+                        let chuoi = "";
+                        let tram = Math.floor(s / 100);
+                        s = s % 100;
+                        if (daydu || tram > 0) {
+                            chuoi = " " + mangso[tram] + " trăm";
+                            chuoi += dochangchuc(s, true);
+                        } else {
+                            chuoi = dochangchuc(s, false);
+                        }
+                        return chuoi;
+                    }
+                    function dochangtrieu(s, daydu) {
+                        let chuoi = "";
+                        let trieu = Math.floor(s / 1000000);
+                        s = s % 1000000;
+                        if (trieu > 0) {
+                            chuoi = docblock(trieu, daydu) + " triệu";
+                            daydu = true;
+                        }
+                        let nghin = Math.floor(s / 1000);
+                        s = s % 1000;
+                        if (nghin > 0) {
+                            chuoi += docblock(nghin, daydu) + " nghìn";
+                            daydu = true;
+                        }
+                        if (s > 0) {
+                            chuoi += docblock(s, daydu);
+                        }
+                        return chuoi;
+                    }
+
+                    let chuoi = "", hauto = "";
+                    let ty = 0;
+                    do {
+                        ty = so % 1000000000;
+                        so = Math.floor(so / 1000000000);
+                        if (so > 0) {
+                            chuoi = dochangtrieu(ty, true) + hauto + chuoi;
+                        } else {
+                            chuoi = dochangtrieu(ty, false) + hauto + chuoi;
+                        }
+                        hauto = " tỷ";
+                    } while (so > 0);
+                    chuoi = chuoi.trim().replace(/\s+/g, ' ');
+                    if (chuoi === '') return '';
+                    return chuoi.charAt(0).toUpperCase() + chuoi.slice(1) + ' đồng';
+                },
+
+                get amountInWords() {
+                    return this.docTienVN(this.newTx.amount);
+                },
+                get walletBalanceInWords() {
+                    return this.docTienVN(this.newWallet.balance);
+                },
+                get budgetInWords() {
+                    return this.docTienVN(this.monthlyBudget);
+                },
+
+                //==================================================
 
                 saveScriptUrl() {
                     if(!this.scriptUrl.includes("script.google.com")) {
@@ -774,7 +905,6 @@
                     this.loadFromGoogleSheets();
                 },
 
-                // GỌI DATA TỪ GOOGLE SHEETS
                 async loadFromGoogleSheets() {
                     if (!this.scriptUrl) {
                         this.initLocalStorageFallback();
@@ -792,13 +922,14 @@
                             this.wallets = data.wallets || JSON.parse(JSON.stringify(this.defaultWallets));
                             this.familyMembers = data.members || JSON.parse(JSON.stringify(this.defaultMembers));
                             this.monthlyBudget = data.budget || 0;
+                            // Cập nhật giá trị hiển thị dạng format
+                            this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
                         } else {
-                            // Sheet trống, dùng Local
                             this.initLocalStorageFallback();
                         }
                     } catch (error) {
                         console.error("Lỗi kết nối Google Sheets:", error);
-                        this.initLocalStorageFallback(); // Fallback nếu rớt mạng
+                        this.initLocalStorageFallback(); 
                     }
                     this.isSyncing = false;
                     
@@ -806,9 +937,7 @@
                     if(this.currentTab === 'dashboard') setTimeout(() => this.initCharts(), 50);
                 },
 
-                // ĐẨY DATA LÊN GOOGLE SHEETS
                 async saveToGoogleSheets() {
-                    // Luôn lưu local dự phòng
                     localStorage.setItem('beu_transactions', JSON.stringify(this.transactions));
                     localStorage.setItem('beu_wallets', JSON.stringify(this.wallets));
                     localStorage.setItem('beu_members', JSON.stringify(this.familyMembers));
@@ -830,7 +959,6 @@
                     try {
                         await fetch(this.scriptUrl, {
                             method: 'POST',
-                            // Dùng text/plain để tránh lỗi CORS preflight của Google Script
                             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                             body: JSON.stringify(payload)
                         });
@@ -840,7 +968,6 @@
                     this.isSyncing = false;
                 },
 
-                // FALLBACK LOCAL STORAGE
                 initLocalStorageFallback() {
                     const savedTx = localStorage.getItem('beu_transactions');
                     if (savedTx) this.transactions = JSON.parse(savedTx);
@@ -854,18 +981,21 @@
                     else this.familyMembers = JSON.parse(JSON.stringify(this.defaultMembers));
 
                     const savedBudget = localStorage.getItem('beu_budget');
-                    if (savedBudget !== null) this.monthlyBudget = Number(savedBudget);
+                    if (savedBudget !== null) {
+                        this.monthlyBudget = Number(savedBudget);
+                        this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
+                    }
 
                     if(this.wallets.length > 0) this.newTx.walletId = this.wallets[0].id;
                 },
 
-                // Logic Thao tác
                 resetAllData() {
                     if(confirm("XÓA TOÀN BỘ DỮ LIỆU? Dữ liệu trên Google Sheets (nếu có) cũng sẽ bị xóa trắng!")) {
                         this.transactions = [];
                         this.wallets = JSON.parse(JSON.stringify(this.defaultWallets));
                         this.familyMembers = JSON.parse(JSON.stringify(this.defaultMembers));
                         this.monthlyBudget = 0;
+                        this.displayMonthlyBudget = '';
                         
                         this.saveToGoogleSheets();
                         alert("Đã khôi phục thành công!");
@@ -917,7 +1047,6 @@
                     return this.wallets.reduce((sum, w) => sum + Number(w.balance), 0);
                 },
 
-                // Tự động lọc ra chỉ các giao dịch của tháng hiện tại
                 getCurrentMonthTransactions() {
                     const today = new Date();
                     const currentMonth = today.getMonth();
@@ -944,7 +1073,6 @@
                 },
 
                 getTopCategories() {
-                    // Cơ cấu chi tiêu cũng sẽ tự động chỉ lấy dữ liệu của tháng hiện tại
                     const expenses = this.getCurrentMonthTransactions().filter(t => t.type === 'expense');
                     const total = expenses.reduce((sum, t) => sum + Number(t.amount), 0);
                     if (total === 0) return [];
@@ -994,10 +1122,11 @@
                     }
 
                     this.newTx.amount = '';
+                    this.displayAmount = ''; // Reset format
                     this.newTx.note = '';
                     this.showAddModal = false;
 
-                    this.saveToGoogleSheets(); // Đẩy lên Cloud
+                    this.saveToGoogleSheets(); 
                     if(this.currentTab === 'dashboard') this.initCharts();
                 },
 
@@ -1017,7 +1146,7 @@
                         this.wallets[walletIndex] = w;
                     }
 
-                    this.saveToGoogleSheets(); // Đẩy lên Cloud
+                    this.saveToGoogleSheets(); 
                     if(this.currentTab === 'dashboard') this.initCharts();
                 },
 
@@ -1043,16 +1172,17 @@
                     this.wallets.push(wData);
                     this.newWallet.name = '';
                     this.newWallet.balance = '';
+                    this.displayWalletBalance = '';
                     this.showAddWalletModal = false;
 
-                    this.saveToGoogleSheets(); // Đẩy lên Cloud
+                    this.saveToGoogleSheets();
                 },
 
                 deleteWallet(id) {
                     if(confirm("Xóa ví này? Giao dịch liên quan sẽ được giữ lại.")) {
                         this.wallets = this.wallets.filter(w => w.id !== id);
                         if(this.wallets.length > 0) this.newTx.walletId = this.wallets[0].id;
-                        this.saveToGoogleSheets(); // Đẩy lên Cloud
+                        this.saveToGoogleSheets(); 
                     }
                 },
                 
@@ -1082,34 +1212,30 @@
                     this.newMember.role = 'Thành viên';
                     this.showAddMemberModal = false;
 
-                    this.saveToGoogleSheets(); // Đẩy lên Cloud
+                    this.saveToGoogleSheets();
                 },
 
                 deleteMember(id) {
                     if(confirm("Xóa thành viên này khỏi danh sách đám mây?")) {
                         this.familyMembers = this.familyMembers.filter(m => m.id !== id);
-                        this.saveToGoogleSheets(); // Đẩy lên Cloud
+                        this.saveToGoogleSheets(); 
                     }
                 },
 
-                // Hàm tính toán dữ liệu 6 tháng gần nhất cho biểu đồ
                 getLast6MonthsData() {
                     const result = { labels: [], incomes: [], expenses: [] };
                     const today = new Date();
                     for (let i = 5; i >= 0; i--) {
-                        // Tính toán lùi từng tháng
                         const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                        const month = d.getMonth() + 1; // 1-12
+                        const month = d.getMonth() + 1; 
                         const year = d.getFullYear();
 
-                        // Cập nhật nhãn trục X tự động
                         if (i === 0) {
                             result.labels.push('Tháng này');
                         } else {
                             result.labels.push('T' + month);
                         }
 
-                        // Lọc giao dịch của riêng tháng đó
                         const txs = this.transactions.filter(t => {
                             if(!t.date) return false;
                             const tDate = new Date(t.date);
@@ -1119,7 +1245,6 @@
                         const inc = txs.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount), 0);
                         const exp = txs.filter(t => t.type === 'expense').reduce((sum, t) => sum + Number(t.amount), 0);
 
-                        // Lưu vào mảng biểu đồ (Đơn vị: Triệu VNĐ)
                         result.incomes.push(inc / 1000000); 
                         result.expenses.push(exp / 1000000);
                     }
@@ -1138,7 +1263,6 @@
 
                     if (!barCtx || !doughnutCtx) return;
 
-                    // Gọi hàm lấy số liệu động
                     const chartData = this.getLast6MonthsData();
 
                     this.barChartInstance = new Chart(barCtx, {
