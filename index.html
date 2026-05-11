@@ -112,8 +112,11 @@
             <i class="ph ph-wallet text-2xl"></i>
             <span class="font-heading font-bold text-lg">Fam<span class="text-primary">Pay</span></span>
         </div>
-        <button class="text-gray-600 hover:text-primary">
-            <i class="ph ph-list text-2xl"></i>
+        
+        <!-- Nút Khóa/Mở Khóa an toàn (Trên Mobile) -->
+        <button @click="isEditMode = !isEditMode" class="transition-colors flex items-center gap-1 px-2 py-1.5 rounded-lg font-bold text-xs shadow-sm border" :class="isEditMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'">
+            <i class="ph text-lg" :class="isEditMode ? 'ph-lock-open' : 'ph-lock'"></i>
+            <span x-text="isEditMode ? 'Đang Mở Xóa' : 'Đã Khóa'"></span>
         </button>
     </div>
 
@@ -136,6 +139,14 @@
             </div>
             
             <div class="flex items-center gap-4">
+                <!-- Nút Khóa/Mở Khóa an toàn (Trên Desktop) -->
+                <button @click="isEditMode = !isEditMode" 
+                        class="px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 transition-colors shadow-sm border"
+                        :class="isEditMode ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200'">
+                    <i class="ph text-lg" :class="isEditMode ? 'ph-lock-open' : 'ph-lock'"></i>
+                    <span x-text="isEditMode ? 'Mở Khóa Xóa' : 'Đã Khóa An Toàn'"></span>
+                </button>
+                
                 <button class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:text-primary transition-colors relative">
                     <i class="ph ph-bell text-lg"></i>
                     <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
@@ -299,7 +310,7 @@
             <div x-show="currentTab === 'transactions'" class="fade-in h-full flex flex-col" style="display: none;">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="font-heading font-bold text-xl md:hidden text-secondary">Giao dịch</h2>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 ml-auto">
                         <select x-model="filterType" class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-primary font-bold">
                             <option value="all">Tất cả</option>
                             <option value="expense">Khoản chi</option>
@@ -345,7 +356,8 @@
                                         <p class="font-bold text-sm" :class="t.type === 'expense' ? 'text-red-500' : 'text-green-600'">
                                             <span x-text="t.type === 'expense' ? '-' : '+'"></span><span x-text="formatMoney(t.amount)"></span>
                                         </p>
-                                        <button @click="deleteTransaction(t.id)" class="text-gray-400 hover:text-red-500 p-1 transition-colors">
+                                        <!-- Nút Xóa Giao dịch chỉ hiện khi đang bật chế độ Chỉnh Sửa -->
+                                        <button x-show="isEditMode" @click="deleteTransaction(t.id)" class="text-gray-400 hover:text-red-500 p-1 transition-colors fade-in">
                                             <i class="ph ph-trash font-bold"></i>
                                         </button>
                                     </div>
@@ -374,7 +386,8 @@
                                             <p class="text-xs text-gray-500 font-bold" x-text="wallet.type"></p>
                                         </div>
                                     </div>
-                                    <button @click="deleteWallet(wallet.id)" class="text-gray-400 hover:text-red-500 tooltip" title="Xóa ví" x-show="wallets.length > 1">
+                                    <!-- Nút Xóa Ví chỉ hiện khi đang bật chế độ Chỉnh Sửa -->
+                                    <button x-show="isEditMode && wallets.length > 1" @click="deleteWallet(wallet.id)" class="text-gray-400 hover:text-red-500 tooltip fade-in" title="Xóa ví">
                                         <i class="ph ph-trash"></i>
                                     </button>
                                 </div>
@@ -449,7 +462,8 @@
                                 </div>
                                 <div class="flex items-center gap-3">
                                     <span class="text-xs px-2 py-1 rounded-full font-bold" :class="member.status === 'Đã kết nối' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'" x-text="member.status"></span>
-                                    <button @click="deleteMember(member.id)" class="text-gray-300 hover:text-red-500 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <!-- Nút Xóa Thành Viên chỉ hiện khi đang bật chế độ Chỉnh Sửa -->
+                                    <button x-show="isEditMode" @click="deleteMember(member.id)" class="text-gray-300 hover:text-red-500 transition-opacity fade-in">
                                         <i class="ph ph-x-circle text-lg"></i>
                                     </button>
                                 </div>
@@ -476,8 +490,8 @@
                             </div>
                         </div>
 
-                        <!-- Khôi phục dữ liệu gốc -->
-                        <div @click="resetAllData()" class="flex items-center gap-3 p-3 hover:bg-red-50 rounded-xl cursor-pointer text-red-500 transition-colors mt-2">
+                        <!-- Khôi phục dữ liệu gốc chỉ hiện khi đang bật chế độ Chỉnh Sửa -->
+                        <div x-show="isEditMode" @click="resetAllData()" class="flex items-center gap-3 p-3 hover:bg-red-50 rounded-xl cursor-pointer text-red-500 transition-colors mt-2 fade-in">
                             <i class="ph ph-warning-circle text-lg"></i>
                             <span class="text-sm font-bold">Khôi phục dữ liệu gốc (Xóa tất cả)</span>
                         </div>
@@ -717,6 +731,7 @@
                 transactions: [],
                 wallets: [],
                 familyMembers: [],
+                isEditMode: false, // Trạng thái khóa/mở khóa xóa
 
                 // Google Sheets Sync
                 scriptUrl: localStorage.getItem('beu_script_url') || 'https://script.google.com/macros/s/AKfycbz0LZDODYZE-MMKtzKqMHERF4FMvBEKq-hpuDvAVr_gvza_BP1bv_GLBJ1014yH2splhA/exec',
@@ -809,19 +824,6 @@
                     this.$watch('displayMonthlyBudget', val => {
                         let raw = String(val).replace(/\D/g, '');
                         this.monthlyBudget = raw ? parseInt(raw, 10) : 0;
-                    });
-                },
-
-                //==================================================
-                // LOGIC ĐỌC CHỮ TIẾNG VIỆT
-                //==================================================
-                formatWithSpaces(num) {
-
-                    // Tự động gán số từ Cloud về input ngân sách
-                    this.$watch('monthlyBudget', val => {
-                        if(this.cleaveBudget && document.activeElement !== this.$refs.budgetInput) {
-                            this.cleaveBudget.setRawValue(val ? val.toString() : '');
-                        }
                     });
                 },
 
@@ -922,6 +924,12 @@
                     this.loadFromGoogleSheets();
                 },
 
+                formatWithSpaces(num) {
+                    if (num === '' || num === null || num === undefined) return '';
+                    if (num === 0) return '0';
+                    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+                },
+
                 async loadFromGoogleSheets() {
                     if (!this.scriptUrl) {
                         this.initLocalStorageFallback();
@@ -939,7 +947,7 @@
                             this.wallets = data.wallets || JSON.parse(JSON.stringify(this.defaultWallets));
                             this.familyMembers = data.members || JSON.parse(JSON.stringify(this.defaultMembers));
                             this.monthlyBudget = data.budget || 0;
-                            // Cập nhật hiển thị (chỉ format 1 lần lúc tải)
+                            // Cập nhật hiển thị
                             this.displayMonthlyBudget = this.formatWithSpaces(this.monthlyBudget);
                         } else {
                             this.initLocalStorageFallback();
